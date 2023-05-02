@@ -60,7 +60,7 @@ if __name__ == '__main__':
 
     if os.path.exists(model_path):
         checkpoint = torch.load(model_path, map_location='cpu')
-        model.load_state_dict(checkpoint, strict=True)
+        model.load_state_dict(checkpoint["model_dict"], strict=False)
         model.eval()
         print("load %s finish" % (os.path.basename(model_path)))
     else:

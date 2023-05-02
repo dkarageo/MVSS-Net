@@ -14,8 +14,12 @@ import argparse
 
 def get_opt():
     parser = argparse.ArgumentParser(description='Inference')
-    parser.add_argument("--model_path", type=str, help="Path to the pretrained model", default="ckpt/mvssnet.pth")
-    parser.add_argument("--test_file", type=str, help="Path to the image list")
+    parser.add_argument("--model_path", type=str, default="ckpt/mvssnet.pth",
+                        help="Path to the pretrained model")
+    parser.add_argument("--test_file", type=str,
+                        help="Path to the image list. It can be either "
+                             "a TXT file or a CSV file with at least `image`, " 
+                             "`mask` and `prediction` columns.")
     parser.add_argument("--save_dir", type=str, default="")
     parser.add_argument("--resize", type=int, default=512)
     opt = parser.parse_args()
@@ -77,14 +81,25 @@ if __name__ == '__main__':
         lab_all = []
         scores = []
 
-        for ix, (img_path, _, _) in enumerate(test_data):
+        for ix, (img_path, _, detection_label) in enumerate(test_data):
             img = cv2.imread(img_path)
             ori_size = img.shape
             img = cv2.resize(img, (new_size, new_size))
             seg, _ = inference_single(img=img, model=model, th=0)
-            save_seg_path = os.path.join(save_path, 'pred', os.path.split(img_path)[-1].split('.')[0] + '.png')
+            if detection_label == 1:
+                save_seg_path = os.path.join(
+                    save_path,
+                    'pred',
+                    'manipulated', os.path.split(img_path)[-1].split('.')[0] + '.png'
+                )
+            else:
+                save_seg_path = os.path.join(
+                    save_path,
+                    'pred',
+                    'authentic',
+                    os.path.split(img_path)[-1].split('.')[0] + '.png'
+                )
             os.makedirs(os.path.split(save_seg_path)[0], exist_ok=True)
             seg = cv2.resize(seg, (ori_size[1], ori_size[0]))
             cv2.imwrite(save_seg_path, seg.astype(np.uint8))
             progbar.add(1, values=[('path', save_seg_path), ])
-

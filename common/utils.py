@@ -1,35 +1,52 @@
+import csv
+import pathlib
 import sys
+from typing import List, Dict, Any
+import logging
+
 sys.path.insert(0,'..')
 import cv2
 import time
 import numpy as np
 import collections
 import sys
+import tqdm
 
 cv2.ocl.setUseOpenCL(False)
 cv2.setNumThreads(0)
 
+logger: logging.Logger = logging.getLogger()
+
 
 def read_annotations(data_path):
-    lines = map(str.strip, open(data_path).readlines())
-    data = []
-    for line in lines:
-        temp = line.split()
-        if len(temp) == 1:
-            sample_path = temp[0]
-            mask_path = 'None'
-            label = -1
-        else:
-            sample_path, mask_path, label = temp
-            label = int(int(label) > 0)
-        data.append((sample_path, mask_path, label))
+    data: list[tuple[str, str, int]] = []
+    if pathlib.Path(data_path).suffix == ".csv":
+        csv_entries: list[dict[str, str]] = read_csv_file(pathlib.Path(data_path))
+        root_path: pathlib.Path = pathlib.Path(data_path).parent.absolute()
+        for e in csv_entries:
+            sample_path: str = str(root_path / e["image"])
+            mask_path: str = str(root_path / e["mask"])
+            label: int = int(str2bool(e["detection"]))
+            data.append((sample_path, mask_path, label))
+    else:
+        lines = map(str.strip, open(data_path).readlines())
+        for line in lines:
+            temp = line.split()
+            if len(temp) == 1:
+                sample_path = temp[0]
+                mask_path = 'None'
+                label = -1
+            else:
+                sample_path, mask_path, label = temp
+                label = int(int(label) > 0)
+            data.append((sample_path, mask_path, label))
     return data
 
 
 def str2bool(in_str):
-    if in_str in [1, "1", "t", "True", "true"]:
+    if in_str in [1, "1", "t", "True", "true", "TRUE"]:
         return True
-    elif in_str in [0, "0", "f", "False", "false", "none"]:
+    elif in_str in [0, "0", "f", "False", "false", "FALSE", "none"]:
         return False
 
 
@@ -58,6 +75,26 @@ def calculate_pixel_f1(pd, gt):
     precision = true_pos / (true_pos + false_pos + 1e-6)
     recall = true_pos / (true_pos + false_neg + 1e-6)
     return f1, precision, recall
+
+
+def read_csv_file(csv_file: pathlib.Path) -> List[Dict[str, str]]:
+    # Read the whole csv file.
+    logger.info(f"READING CSV: {str(csv_file)}")
+    entries: List[Dict[str, str]] = []
+    with csv_file.open() as f:
+        reader: csv.DictReader = csv.DictReader(f, delimiter=",")
+        for row in tqdm.tqdm(reader, desc="Reading CSV entries", unit="entry"):
+            entries.append(row)
+    logger.info(f"TOTAL ENTRIES: {len(entries)}")
+    return entries
+
+
+def write_csv_file(data: list[dict[str, Any]], output_file: pathlib.Path) -> None:
+    with output_file.open("w") as f:
+        writer: csv.DictWriter = csv.DictWriter(f, fieldnames=data[0].keys(), delimiter=",")
+        writer.writeheader()
+        for r in data:
+            writer.writerow(r)
 
 
 class Progbar(object):

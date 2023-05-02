@@ -1,7 +1,10 @@
+import pathlib
 import sys
 import os
+from typing import Any
+
 import numpy as np
-from common.utils import Progbar, read_annotations
+from common.utils import Progbar, read_annotations, write_csv_file
 import torch.backends.cudnn as cudnn
 from models.mvssnet import get_mvss
 from models.resfcn import ResFCN
@@ -81,18 +84,31 @@ if __name__ == '__main__':
         lab_all = []
         scores = []
 
+        authentic_detections: list[dict[str, Any]] = []
+        manipulated_detections: list[dict[str, Any]] = []
+
         for ix, (img_path, _, detection_label) in enumerate(test_data):
             img = cv2.imread(img_path)
             ori_size = img.shape
             img = cv2.resize(img, (new_size, new_size))
-            seg, _ = inference_single(img=img, model=model, th=0)
+            seg, predicted_detection = inference_single(img=img, model=model, th=0)
             if detection_label == 1:
+                # Save predicted results for the manipulated samples in the dataset.
+                manipulated_detections.append({
+                    "image": pathlib.Path(img_path).name,
+                    "mvssnet_detection": predicted_detection
+                })
                 save_seg_path = os.path.join(
                     save_path,
                     'pred',
                     'manipulated', os.path.split(img_path)[-1].split('.')[0] + '.png'
                 )
             else:
+                # Save predicted results for the authentic samples in the dataset.
+                authentic_detections.append({
+                    "image": pathlib.Path(img_path).name,
+                    "mvssnet_detection": predicted_detection
+                })
                 save_seg_path = os.path.join(
                     save_path,
                     'pred',
@@ -103,3 +119,11 @@ if __name__ == '__main__':
             seg = cv2.resize(seg, (ori_size[1], ori_size[0]))
             cv2.imwrite(save_seg_path, seg.astype(np.uint8))
             progbar.add(1, values=[('path', save_seg_path), ])
+
+        # Save detection CSVs.
+        if len(authentic_detections) > 0:
+            write_csv_file(authentic_detections,
+                           pathlib.Path(save_path)/"pred"/"authentic"/"detection_results.csv")
+        if len(manipulated_detections) > 0:
+            write_csv_file(manipulated_detections,
+                           pathlib.Path(save_path)/"pred"/"manipulated"/"detection_results.csv")

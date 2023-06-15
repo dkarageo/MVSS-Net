@@ -98,32 +98,25 @@ if __name__ == '__main__':
                     "image": pathlib.Path(img_path).name,
                     "mvssnet_detection": predicted_detection
                 })
-                save_seg_path = os.path.join(
-                    save_path,
-                    'pred',
-                    'manipulated', os.path.split(img_path)[-1].split('.')[0] + '.png'
-                )
+                save_dir_path = pathlib.Path(save_path) / 'pred' / 'manipulated_masks'
+
             else:
                 # Save predicted results for the authentic samples in the dataset.
                 authentic_detections.append({
                     "image": pathlib.Path(img_path).name,
                     "mvssnet_detection": predicted_detection
                 })
-                save_seg_path = os.path.join(
-                    save_path,
-                    'pred',
-                    'authentic',
-                    os.path.split(img_path)[-1].split('.')[0] + '.png'
-                )
-            os.makedirs(os.path.split(save_seg_path)[0], exist_ok=True)
+                save_dir_path = pathlib.Path(save_path) / 'pred' / 'authentic_masks'
+            save_dir_path.mkdir(exist_ok=True, parents=True)
+            save_seg_path = save_dir_path / f'{pathlib.Path(img_path).stem}.png'
             seg = cv2.resize(seg, (ori_size[1], ori_size[0]))
-            cv2.imwrite(save_seg_path, seg.astype(np.uint8))
+            cv2.imwrite(str(save_seg_path), seg.astype(np.uint8))
             progbar.add(1, values=[('path', save_seg_path), ])
 
         # Save detection CSVs.
         if len(authentic_detections) > 0:
             write_csv_file(authentic_detections,
-                           pathlib.Path(save_path)/"pred"/"authentic"/"detection_results.csv")
+                           pathlib.Path(save_path)/"pred"/"authentic_masks"/"detection_results.csv")
         if len(manipulated_detections) > 0:
             write_csv_file(manipulated_detections,
-                           pathlib.Path(save_path)/"pred"/"manipulated"/"detection_results.csv")
+                           pathlib.Path(save_path)/"pred"/"manipulated_masks"/"detection_results.csv")

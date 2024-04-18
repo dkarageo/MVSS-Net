@@ -1,6 +1,7 @@
 import pathlib
 import sys
 import os
+import timeit
 from typing import Any
 
 import numpy as np
@@ -87,6 +88,9 @@ if __name__ == '__main__':
         authentic_detections: list[dict[str, Any]] = []
         manipulated_detections: list[dict[str, Any]] = []
 
+        torch.cuda.synchronize()
+        start_time: float = timeit.default_timer()
+
         for ix, (img_path, _, detection_label) in enumerate(test_data):
             img = cv2.imread(img_path)
             ori_size = img.shape
@@ -112,6 +116,12 @@ if __name__ == '__main__':
             seg = cv2.resize(seg, (ori_size[1], ori_size[0]))
             cv2.imwrite(str(save_seg_path), seg.astype(np.uint8))
             progbar.add(1, values=[('path', save_seg_path), ])
+
+        torch.cuda.synchronize()
+        stop_time: float = timeit.default_timer()
+        elapsed_time: float = stop_time - start_time
+        print(f"Total time: {elapsed_time} secs")
+        print(f"Time per image: {elapsed_time / len(test_data)}")
 
         # Save detection CSVs.
         if len(authentic_detections) > 0:

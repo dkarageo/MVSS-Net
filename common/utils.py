@@ -25,7 +25,10 @@ def read_annotations(data_path, root_path: Optional[pathlib.Path] = None):
         if root_path is None:
             root_path = pathlib.Path(data_path).parent.absolute()
         for e in csv_entries:
-            sample_path: str = str(root_path / e["image"])
+            if e.get("image_simple", ""):
+                sample_path: str = str(root_path / e["image_simple"])
+            else:
+                sample_path: str = str(root_path / e["image"])
             mask_path: str = str(root_path / e["mask"])
             label: int = int(str2bool(e["detection"]))
             data.append((sample_path, mask_path, label))

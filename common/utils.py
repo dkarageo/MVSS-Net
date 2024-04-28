@@ -1,7 +1,7 @@
 import csv
 import pathlib
 import sys
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import logging
 
 sys.path.insert(0,'..')
@@ -18,11 +18,12 @@ cv2.setNumThreads(0)
 logger: logging.Logger = logging.getLogger()
 
 
-def read_annotations(data_path):
+def read_annotations(data_path, root_path: Optional[pathlib.Path] = None):
     data: list[tuple[str, str, int]] = []
     if pathlib.Path(data_path).suffix == ".csv":
         csv_entries: list[dict[str, str]] = read_csv_file(pathlib.Path(data_path))
-        root_path: pathlib.Path = pathlib.Path(data_path).parent.absolute()
+        if root_path is None:
+            root_path = pathlib.Path(data_path).parent.absolute()
         for e in csv_entries:
             sample_path: str = str(root_path / e["image"])
             mask_path: str = str(root_path / e["mask"])
